@@ -477,10 +477,10 @@ else if($exit_code == 2)
 
 echo " // ".substr($output_string_head, 0, -2);
 
-
 //Output excluded disks if argument "E" was given
-if(!empty($output_snmp_exclude))
-	echo " Excluded: ".$output_snmp_exclude;
+//No Output needed
+//if(!empty($output_snmp_exclude))
+//	echo " Excluded: ".$output_snmp_exclude;
 
 //Output extended host information (for Nagios version 3 or higher)
 echo "\n".$output_string;
