@@ -330,9 +330,9 @@ foreach($storage_info as $storage_info_value)
 			if($hrStorageSize_output > 0)
 			{
 				$percentage_used	= round( (100 / $hrStorageSize_output) * $hrStorageUsed_output, 1);
-
-				$used_gb_warning	= round( ($hrStorageSize_output / 100) * $snmp_warning, 0);
-				$used_gb_critical	= round( ($hrStorageSize_output / 100) * $snmp_critical, 0);
+				// round to same decimal as $hrStorageUsed_output
+				$used_gb_warning	= round( ($hrStorageSize_output / 100) * $snmp_warning, 2);
+				$used_gb_critical	= round( ($hrStorageSize_output / 100) * $snmp_critical, 2);
 	
 				if($percentage_used > $snmp_critical)
 				{
@@ -406,9 +406,9 @@ foreach($storage_info as $storage_info_value)
 			if($hrStorageSize_output > 0)
 			{
 				$percentage_used	= round( (100 / $hrStorageSize_output) * $hrStorageUsed_output, 1);
-
-				$used_gb_warning	= round( ($hrStorageSize_output / 100) * $snmp_warning, 0);
-				$used_gb_critical	= round( ($hrStorageSize_output / 100) * $snmp_critical, 0);
+				// round to same decimal as $hrStorageUsed_output
+				$used_gb_warning	= round( ($hrStorageSize_output / 100) * $snmp_warning, 2);
+				$used_gb_critical	= round( ($hrStorageSize_output / 100) * $snmp_critical, 2);
 
 				if($percentage_used > $snmp_critical)
 				{
