@@ -113,17 +113,20 @@ function snmp_walk($snmp_host, $snmp_community, $snmp_oid, $snmp_version)
 {
 	if(extension_loaded("snmp"))
 	{
+        #set snmp timeout and retry
+        $snmp_timeout = 10000000;
+        $snmp_retry = 3;
 
 		if($snmp_version == "1")
 		{
-			if($snmp_return = @snmpwalk($snmp_host, $snmp_community, $snmp_oid))
+			if($snmp_return = @snmpwalk($snmp_host, $snmp_community, $snmp_oid, $snmp_timeout, $snmp_retry))
 				return $snmp_return;
 			else
 				show_help("SNMP");
 		}
 		else if($snmp_version == "2c" || $snmp_version == "2")
 		{
-			if($snmp_return = @snmp2_walk($snmp_host, $snmp_community, $snmp_oid))
+			if($snmp_return = @snmp2_walk($snmp_host, $snmp_community, $snmp_oid, $snmp_timeout, $snmp_retry))
 				return $snmp_return;
 			else
 				show_help("SNMP");
