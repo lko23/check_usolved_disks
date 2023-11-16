@@ -113,12 +113,13 @@ function snmp_walk($snmp_host, $snmp_community, $snmp_oid, $snmp_version)
 {
 	if(extension_loaded("snmp"))
 	{
-        #set snmp timeout and retry
+        # set snmp timeout 10 sec and 10 times retry
         $snmp_timeout = 10000000;
-        $snmp_retry = 3;
+        $snmp_retry = 10;
 
 		if($snmp_version == "1")
 		{
+			# add timeout and retry
 			if($snmp_return = @snmpwalk($snmp_host, $snmp_community, $snmp_oid, $snmp_timeout, $snmp_retry))
 				return $snmp_return;
 			else
@@ -126,6 +127,7 @@ function snmp_walk($snmp_host, $snmp_community, $snmp_oid, $snmp_version)
 		}
 		else if($snmp_version == "2c" || $snmp_version == "2")
 		{
+                        # add timeout and retry
 			if($snmp_return = @snmp2_walk($snmp_host, $snmp_community, $snmp_oid, $snmp_timeout, $snmp_retry))
 				return $snmp_return;
 			else
@@ -136,6 +138,38 @@ function snmp_walk($snmp_host, $snmp_community, $snmp_oid, $snmp_version)
 	}
 	else
 		show_help("SNMP_MODULE");
+}
+
+# add function for snmprealwalk
+function snmp_realwalk($snmp_host, $snmp_community, $snmp_oid, $snmp_version)
+{
+        if(extension_loaded("snmp"))
+        {
+        # set snmp timeout 10 sec and 10 times retry
+        $snmp_timeout = 10000000;
+        $snmp_retry = 10;
+
+                if($snmp_version == "1")
+                {
+                        # add timeout and retry
+                        if($snmp_return = @snmprealwalk($snmp_host, $snmp_community, $snmp_oid, $snmp_timeout, $snmp_retry))
+                                return $snmp_return;
+                        else
+                                show_help("SNMP");
+                }
+                else if($snmp_version == "2c" || $snmp_version == "2")
+                {
+                        # add timeout and retry
+                        if($snmp_return = @snmp2_real_walk($snmp_host, $snmp_community, $snmp_oid, $snmp_timeout, $snmp_retry))
+                                return $snmp_return;
+                        else
+                                show_help("SNMP");
+                }
+                else
+                        show_help("SNMP");
+        }
+        else
+                show_help("SNMP_MODULE");
 }
 
 
@@ -221,58 +255,86 @@ $snmp_oid_hrStorageUnit	= ".1.3.6.1.2.1.25.2.3.1.4";
 $snmp_oid_hrStorageSize	= ".1.3.6.1.2.1.25.2.3.1.5";
 $snmp_oid_hrStorageUsed	= ".1.3.6.1.2.1.25.2.3.1.6";
 $snmp_oid_hrStorageType	= ".1.3.6.1.2.1.25.2.3.1.2";
-$snmp_oid_sysDescr		= ".1.3.6.1.2.1.1.1";
-
+$snmp_oid_sysDescr	= ".1.3.6.1.2.1.1.1";
 
 
 //---------------------------------------------------------------------------
 //--------------- Walk through SNMP informations from server ----------------
 
-$i	= 0;
-$hrStorageDesc = snmp_walk($snmp_host, $snmp_community, $snmp_oid_hrStorageDesc, $snmp_version);
+# Extract $hrStorageDiskOnlyKeys and only get SNMP Info for those SubOIDs
+$hrStorageTypeDisk = snmp_realwalk($snmp_host, $snmp_community, $snmp_oid_hrStorageType, $snmp_version);
+$hrStorageDiskOnly = array_keys($hrStorageTypeDisk, "OID: HOST-RESOURCES-TYPES::hrStorageFixedDisk");
+# add Net Storage
+$hrStorageDiskNetOnly = array_keys($hrStorageTypeDisk, "OID: HOST-RESOURCES-TYPES::hrStorageNetworkDisk");
+$hrStorageDiskOnly=array_merge($hrStorageDiskOnly, $hrStorageDiskNetOnly);
+$hrStorageDiskOnlyKeys = preg_replace('/HOST-RESOURCES-MIB::hrStorageType/', '', $hrStorageDiskOnly);
+
+error_reporting(E_ALL ^ E_NOTICE);
+
+$i      = 0;
+foreach($hrStorageDiskOnlyKeys as $Key)
+{
+        $hrStorageDesc[] = reset(snmp_walk($snmp_host, $snmp_community, $snmp_oid_hrStorageDesc.$Key, $snmp_version));
+}
+//$hrStorageDesc = snmp_walk($snmp_host, $snmp_community, $snmp_oid_hrStorageDesc, $snmp_version);
 foreach($hrStorageDesc as $hrStorageDesc_value)
 {
-	$storage_info[$i]['hrStorageDesc'] = str_replace("STRING: ","",$hrStorageDesc_value);
-	$i++;
+        $storage_info[$i]['hrStorageDesc'] = str_replace("STRING: ","",$hrStorageDesc_value);
+        $i++;
 }
 
-
-$i 	= 0;
-$hrStorageSize = snmp_walk($snmp_host, $snmp_community, $snmp_oid_hrStorageSize, $snmp_version);
+$i      = 0;
+foreach($hrStorageDiskOnlyKeys as $Key)
+{
+        $hrStorageSize[] = reset(snmp_walk($snmp_host, $snmp_community, $snmp_oid_hrStorageSize.$Key, $snmp_version));
+}
+//$hrStorageSize = snmp_walk($snmp_host, $snmp_community, $snmp_oid_hrStorageSize, $snmp_version);
 foreach($hrStorageSize as $hrStorageSize_value)
 {
-	$storage_info[$i]['hrStorageSize'] = str_replace("INTEGER: ","",$hrStorageSize_value);
-	$i++;
+        $storage_info[$i]['hrStorageSize'] = str_replace("INTEGER: ","",$hrStorageSize_value);
+        $i++;
 }
 
-$i 	= 0;
-$hrStorageUsed = snmp_walk($snmp_host, $snmp_community, $snmp_oid_hrStorageUsed, $snmp_version);
+$i      = 0;
+foreach($hrStorageDiskOnlyKeys as $Key)
+{
+        $hrStorageUsed[] = reset(snmp_walk($snmp_host, $snmp_community, $snmp_oid_hrStorageUsed.$Key, $snmp_version));
+}
+//$hrStorageUsed = snmp_walk($snmp_host, $snmp_community, $snmp_oid_hrStorageUsed, $snmp_version);
 foreach($hrStorageUsed as $hrStorageUsed_value)
 {
-	$storage_info[$i]['hrStorageUsed'] = str_replace("INTEGER: ","",$hrStorageUsed_value);
-	$i++;
+        $storage_info[$i]['hrStorageUsed'] = str_replace("INTEGER: ","",$hrStorageUsed_value);
+        $i++;
 }
 
-$i 	= 0;
-$hrStorageUnit = snmp_walk($snmp_host, $snmp_community, $snmp_oid_hrStorageUnit, $snmp_version);
+$i      = 0;
+foreach($hrStorageDiskOnlyKeys as $Key)
+{
+        $hrStorageUnit[] = reset(snmp_walk($snmp_host, $snmp_community, $snmp_oid_hrStorageUnit.$Key, $snmp_version));
+}
+//$hrStorageUnit = snmp_walk($snmp_host, $snmp_community, $snmp_oid_hrStorageUnit, $snmp_version);
 foreach($hrStorageUnit as $hrStorageUnit_value)
 {
-	$hrStorageUnit_value	= str_replace("INTEGER: ","",$hrStorageUnit_value);
-	$hrStorageUnit_value	= str_replace(" Bytes","",$hrStorageUnit_value);
+        $hrStorageUnit_value    = str_replace("INTEGER: ","",$hrStorageUnit_value);
+        $hrStorageUnit_value    = str_replace(" Bytes","",$hrStorageUnit_value);
 
-	$storage_info[$i]['hrStorageUnit'] = $hrStorageUnit_value;
-	$i++;
+        $storage_info[$i]['hrStorageUnit'] = $hrStorageUnit_value;
+        $i++;
 }
 
-$i 	= 0;
-$hrStorageType = snmp_walk($snmp_host, $snmp_community, $snmp_oid_hrStorageType, $snmp_version);
+$i      = 0;
+foreach($hrStorageDiskOnlyKeys as $Key)
+{
+        $hrStorageType[] = reset(snmp_walk($snmp_host, $snmp_community, $snmp_oid_hrStorageType.$Key, $snmp_version));
+}
+//$hrStorageType = snmp_walk($snmp_host, $snmp_community, $snmp_oid_hrStorageType, $snmp_version);
 foreach($hrStorageType as $hrStorageType_value)
 {
-	$hrStorageType_value	= str_replace("INTEGER: ","",$hrStorageType_value);
-	$hrStorageType_value	= str_replace(" Bytes","",$hrStorageType_value);
+        $hrStorageType_value    = str_replace("INTEGER: ","",$hrStorageType_value);
+        $hrStorageType_value    = str_replace(" Bytes","",$hrStorageType_value);
 
-	$storage_info[$i]['hrStorageType'] = $hrStorageType_value;
-	$i++;
+        $storage_info[$i]['hrStorageType'] = $hrStorageType_value;
+        $i++;
 }
 
 $sysDescr = snmp_walk($snmp_host, $snmp_community, $snmp_oid_sysDescr, $snmp_version);
@@ -324,8 +386,27 @@ foreach($storage_info as $storage_info_value)
 			$output_storage = false;
 
 		//don't show excluded partitions
+		/*
 		if(is_array($snmp_exclude) && in_array($hrStorageDesc_output, $snmp_exclude))
 			$output_storage = false;
+		*/
+		/*
+		   we want regexp matching when excluding FS (but preserve $ for end-of-line matching)
+		*/
+		if(is_array($snmp_exclude))
+		{
+		         // regex-match the excluded fs-names in the actual fs-names
+			 // unix/linux forward-slashes have to be escaped first as '/' is the regexp-separator
+			 // 
+			foreach($snmp_exclude as $fs_exclude) {
+			  $fs_exclude_nodollar = str_replace("$","_dollar_",$fs_exclude);
+			  $fs_exclude_escaped_nodollar = preg_quote($fs_exclude_nodollar, "/");
+			  $fs_exclude_escaped = str_replace("_dollar_","$",$fs_exclude_escaped_nodollar);
+			  if(preg_match("/^$fs_exclude_escaped/i", $hrStorageDesc_output)) {
+			    $output_storage = false;
+			    }
+			}
+		}
 
 		//if current disk meets the criteria
 		if($output_storage == true)
@@ -333,7 +414,7 @@ foreach($storage_info as $storage_info_value)
 			if($hrStorageSize_output > 0)
 			{
 				$percentage_used	= round( (100 / $hrStorageSize_output) * $hrStorageUsed_output, 1);
-				// round to same decimal as $hrStorageUsed_output
+				// Change round to two decimals
 				$used_gb_warning	= round( ($hrStorageSize_output / 100) * $snmp_warning, 2);
 				$used_gb_critical	= round( ($hrStorageSize_output / 100) * $snmp_critical, 2);
 	
@@ -409,7 +490,7 @@ foreach($storage_info as $storage_info_value)
 			if($hrStorageSize_output > 0)
 			{
 				$percentage_used	= round( (100 / $hrStorageSize_output) * $hrStorageUsed_output, 1);
-				// round to same decimal as $hrStorageUsed_output
+                                // Change round to two decimals
 				$used_gb_warning	= round( ($hrStorageSize_output / 100) * $snmp_warning, 2);
 				$used_gb_critical	= round( ($hrStorageSize_output / 100) * $snmp_critical, 2);
 
@@ -478,10 +559,11 @@ else if($exit_code == 1)
 else if($exit_code == 2)
 	echo "Critical {$output_string_head_error}";
 
-echo " // ".substr($output_string_head, 0, -2);
+echo ": ".substr($output_string_head, 0, -2);
+
 
 //Output excluded disks if argument "E" was given
-//No Output needed
+// Remove Excluded Output
 //if(!empty($output_snmp_exclude))
 //	echo " Excluded: ".$output_snmp_exclude;
 
